@@ -24,11 +24,11 @@
 TEST_TOOL_ROOTS := 
 
 # This defines the tests to be run that were not already defined in TEST_TOOL_ROOTS.
-TEST_ROOTS := test_mini
+TEST_ROOTS := splice64
 
 # This defines the tools which will be run during the the tests, and were not already defined in
 # TEST_TOOL_ROOTS.
-TOOL_ROOTS := track # nullpin libdft libdft-dta
+TOOL_ROOTS := splice # nullpin libdft libdft-dta
 
 # This defines the static analysis tools which will be run during the the tests. They should not
 # be defined in TEST_TOOL_ROOTS. If a test with the same name exists, it should be defined in
@@ -39,7 +39,7 @@ TOOL_ROOTS := track # nullpin libdft libdft-dta
 SA_TOOL_ROOTS :=
 
 # This defines all the applications that will be run during the tests.
-APP_ROOTS := mini_test
+APP_ROOTS :=
 
 # This defines any additional object files that need to be compiled.
 OBJECT_ROOTS := 
@@ -61,7 +61,7 @@ endif
 
 # Place intel64-specific definitions here if they apply to all supported operating systems.
 ifeq ($(TARGET),intel64)
-	TOOL_CXXFLAGS +=
+    TOOL_CXXFLAGS +=
     LIBDFT_INC_PATH	= $(realpath ../src/)
     LIBDFT_PATH	= $(realpath ../src/obj-intel64/)
 endif
@@ -91,9 +91,13 @@ endif
 ###### Special tools' build rules ######
 
 LOGGING_FLAGS = -DNO_PINTOOL_LOG
-TOOL_CXXFLAGS += $(LOGGING_FLAGS) -I$(LIBDFT_INC_PATH) -L$(LIBDFT_PATH)
+TOOL_CXXFLAGS += -std=c++11 $(LOGGING_FLAGS) -I$(LIBDFT_INC_PATH) -L$(LIBDFT_PATH)
 TOOL_LIBS += -L$(LIBDFT_PATH) -ldft
 
-INPUT_FILE=cur_input
-test_mini: $(OBJDIR)/track$(PINTOOL_SUFFIX) ${OBJDIR}/mini_test$(EXE_SUFFIX)
-	$(PIN) -t $< -- $(OBJDIR)mini_test$(EXE_SUFFIX)  ${INPUT_FILE}
+splice64: $(OBJDIR)/splice$(PINTOOL_SUFFIX)
+
+$(OBJDIR)splice$(OBJ_SUFFIX): splice.c
+	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
+
+$(OBJDIR)splice$(PINTOOL_SUFFIX): $(SPLICE_OBJS)
+	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
