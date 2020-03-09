@@ -21,10 +21,10 @@
 # This defines tests which run tools of the same name.  This is simply for convenience to avoid
 # defining the test name twice (once in TOOL_ROOTS and again in TEST_ROOTS).
 # Tests defined here should not be defined in TOOL_ROOTS and TEST_ROOTS.
-TEST_TOOL_ROOTS := 
+TEST_TOOL_ROOTS :=
 
 # This defines the tests to be run that were not already defined in TEST_TOOL_ROOTS.
-TEST_ROOTS := splice64
+TEST_ROOTS :=
 
 # This defines the tools which will be run during the the tests, and were not already defined in
 # TEST_TOOL_ROOTS.
@@ -91,12 +91,12 @@ endif
 ###### Special tools' build rules ######
 
 LOGGING_FLAGS = -DNO_PINTOOL_LOG
-TOOL_CXXFLAGS += -std=c++11 $(LOGGING_FLAGS) -I$(LIBDFT_INC_PATH) -L$(LIBDFT_PATH)
+TOOL_CXXFLAGS += $(LOGGING_FLAGS) -I$(LIBDFT_INC_PATH) -L$(LIBDFT_PATH) # -fpermissive -w
 TOOL_LIBS += -L$(LIBDFT_PATH) -ldft
 
-splice64: $(OBJDIR)/splice$(PINTOOL_SUFFIX)
+SPLICE_OBJS = $(OBJDIR)splice$(OBJ_SUFFIX)
 
-$(OBJDIR)splice$(OBJ_SUFFIX): splice.c
+$(OBJDIR)splice$(OBJ_SUFFIX): splice.cpp
 	$(CXX) $(TOOL_CXXFLAGS) $(COMP_OBJ)$@ $<
 
 $(OBJDIR)splice$(PINTOOL_SUFFIX): $(SPLICE_OBJS)
