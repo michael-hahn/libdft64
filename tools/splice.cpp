@@ -14,27 +14,13 @@
 #include <set>
 #include <vector>
 
-#include "osutils.h"
 #include "branch_pred.h"
 #include "libdft_api.h"
 #include "pin.H"
 #include "tagmap.h"
 #include "debug.h"
-#include "syscall_desc.h"
-
-/* default suffixes for dynamic shared libraries.
- * We will use suffixes to identify them to not track them. */
-#define DLIB_SUFF 	".so"
-#define DLIB_SUFF_ALT 	".so."
-
-/* Macros related to stdin/stdout/stderr. */
-#define IS_STDFD(fd) ( (fd == STDOUT_FILENO) || (fd == STDIN_FILENO) || (fd == STDERR_FILENO) )
-
-/* Syscall descriptors. */
-extern syscall_desc_t syscall_desc[SYSCALL_MAX];
-
-/* Set of interesting descriptors to track. */
-static std::set<int> fdset;
+#include "syscall_hook.h"
+#include "osutils.h"
 
 /* Set of interesting addresses to track. */
 static std::set<ADDRINT> addrset;
@@ -42,20 +28,17 @@ static std::set<ADDRINT> addrset;
 /* Pin knobs. */
 /* Track open/create files (enabled by default). */
 static KNOB<size_t> fs(KNOB_MODE_WRITEONCE, "pintool", "f", "1", "Enable files as taint sources.");
-
 /* Track socket connections (enabled by default). */
 static KNOB<size_t> sk(KNOB_MODE_WRITEONCE, "pintool", "s", "1", "Enable sockets as taint sources.");
-
 /* Splice log file path (different from the Pin's native log LOG()) */
 static KNOB<string> log_path(KNOB_MODE_WRITEONCE, "pintool", "l", "splice.log", "File path of the Splice log.");
-
 /* Time out for debugger connection (default is wait forever). */
 static KNOB<UINT32> to(KNOB_MODE_WRITEONCE, "pintool", "t", "0", "When breakpoint condition is triggered, wait for this many seconds for debugger to connect (zero means wait forever)");
 
 /* Syscall hooks. */
-static void post_open_hook(THREADID tid, syscall_ctx_t *ctx);
+// static void post_open_hook(THREADID tid, syscall_ctx_t *ctx);
 
-/* Helper functions. */
+/* Helper function declarations. */
 std::string TrimWhitespace(const std::string &);
 
 /* Called when a new instruction's memory address is 
@@ -352,7 +335,8 @@ main(int argc, char **argv)
 	IMG_AddUnloadFunction(ImageUnload, 0);
 
 	/* Install taint sources and sinks through syscall hooking. */
-	(void)syscall_set_post(&syscall_desc[__NR_open], post_open_hook);	
+	// (void)syscall_set_post(&syscall_desc[__NR_open], post_open_hook);
+	hook_syscall();
 
 	LOG("Starting Program...\n");
 	/* start Pin */
@@ -411,25 +395,3 @@ std::string TrimWhitespace(const std::string &inLine)
     }
     return outLine;
 }
-
-#define DEF_SYSCALL_OPEN
-#include "syscall_args.h"
-/* __NR_open post syscall hook */
-static void post_open_hook(THREADID tid, syscall_ctx_t *ctx) {
-        if (unlikely(_FD < 0)) {
-                LOG("ERROR: \t" + std::string(ctx->nr == __NR_creat ? "creat(" : "open(") + _PATHNAME + ", " + decstr(_FLAGS) + ", " + decstr(_MODE) + ") = " + decstr(_FD) + " (" + strerror(errno) + ")\n");
-                return;
-        }
-
-        /* Resolve fd to full pathname, instead of syscall argument. */
-        const std::string fdn = fdname(_FD);
-
-        /* ignore dynamic shared libraries, and directory */
-	//TODO: path_isdir uses stat, which seems to cause problems at runtime as 'stat' symbol cannot be referenced -- need to figure out why.
-        if (strstr((char *)ctx->arg[SYSCALL_ARG0], DLIB_SUFF) == NULL && strstr((char *)ctx->arg[SYSCALL_ARG0], DLIB_SUFF_ALT) == NULL /* && !path_isdir(fdn) */ ) {
-		std::cout << "OPEN (POST): " << fdn << std::endl;
-                fdset.insert((int)ctx->ret);
-        }
-}
-#define UNDEF_SYSCALL_OPEN
-#include "syscall_args.h"
