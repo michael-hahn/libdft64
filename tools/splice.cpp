@@ -21,6 +21,7 @@
 #include "debug.h"
 #include "syscall_hook.h"
 #include "osutils.h"
+#include "helper.h"
 
 /* Set of interesting addresses to track. */
 static std::set<ADDRINT> addrset;
@@ -34,12 +35,6 @@ static KNOB<size_t> sk(KNOB_MODE_WRITEONCE, "pintool", "s", "1", "Enable sockets
 static KNOB<string> log_path(KNOB_MODE_WRITEONCE, "pintool", "l", "splice.log", "File path of the Splice log.");
 /* Time out for debugger connection (default is wait forever). */
 static KNOB<UINT32> to(KNOB_MODE_WRITEONCE, "pintool", "t", "0", "When breakpoint condition is triggered, wait for this many seconds for debugger to connect (zero means wait forever)");
-
-/* Syscall hooks. */
-// static void post_open_hook(THREADID tid, syscall_ctx_t *ctx);
-
-/* Helper function declarations. */
-std::string TrimWhitespace(const std::string &);
 
 /* Called when a new instruction's memory address is 
  * of interest. Insert the address in addrset set. */
@@ -335,7 +330,6 @@ main(int argc, char **argv)
 	IMG_AddUnloadFunction(ImageUnload, 0);
 
 	/* Install taint sources and sinks through syscall hooking. */
-	// (void)syscall_set_post(&syscall_desc[__NR_open], post_open_hook);
 	hook_syscall();
 
 	LOG("Starting Program...\n");
@@ -351,47 +345,4 @@ err:	/* error handling */
 
 	/* return */
 	return EXIT_FAILURE;
-}
-
-/*
- * Trim whitespace from a line of text.  Leading and trailing whitespace is removed.
- * Any internal whitespace is replaced with a single space (' ') character.
- *
- *  inLine[in]  Input text line.
- *
- * Returns: A string with the whitespace trimmed.
- */
-std::string TrimWhitespace(const std::string &inLine)
-{
-    std::string outLine = inLine;
-
-    bool skipNextSpace = true;
-    for (std::string::iterator it = outLine.begin();  it != outLine.end();  ++it)
-    {
-        if (std::isspace(*it))
-        {
-            if (skipNextSpace)
-            {
-                it = outLine.erase(it);
-                if (it == outLine.end())
-                    break;
-            }
-            else
-            {
-                *it = ' ';
-                skipNextSpace = true;
-            }
-        }
-        else
-        {
-            skipNextSpace = false;
-        }
-    }
-    if (!outLine.empty())
-    {
-        std::string::reverse_iterator it = outLine.rbegin();
-        if (std::isspace(*it))
-            outLine.erase(outLine.size()-1);
-    }
-    return outLine;
 }
